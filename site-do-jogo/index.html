@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gabinete de Crise</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --verde-br: #009c3b; --amarelo-br: #ffdf00; --azul-br: #002776; --bg-gradient: linear-gradient(135deg, #022a1c 0%, #002776 100%); --card-bg: #ffffff; --text-dark: #1e293b; --danger: #dc2626; --success: #16a34a; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-gradient); color: var(--text-dark); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* Dashboard 4 colunas */
+        #dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 95%; max-width: 900px; padding: 12px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: sticky; top: 10px; z-index: 100; border-radius: 16px; border-bottom: 4px solid var(--amarelo-br); }
+        .stat { text-align: center; padding: 8px 4px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; position: relative; transition: 0.3s; }
+        .stat-header { font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .info-btn { background: #e2e8f0; color: var(--azul-br); width: 14px; height: 14px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; cursor: pointer; margin-left: 4px; }
+        .val { font-size: 1rem; font-weight: 800; color: var(--azul-br); display: block; }
+        .up-good { background-color: #dcfce7 !important; color: var(--success); transform: scale(1.05); border-color: var(--success); }
+        .up-bad { background-color: #fee2e2 !important; color: var(--danger); transform: scale(1.05); border-color: var(--danger); }
+        
+        /* Jogo */
+        #game-container { width: 90%; max-width: 550px; margin-top: 30px; flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; }
+        .intro-box { background: var(--card-bg); padding: 40px; border-radius: 24px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border-top: 6px solid var(--verde-br); }
+        .intro-box h2 { color: var(--azul-br); font-size: 2rem; margin: 10px 0; }
+        .name-input { width: 80%; padding: 12px; margin: 15px 0; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; text-align: center; }
+        .name-input:focus { border-color: var(--azul-br); outline: none; }
+        .consent-wrapper { background: #f1f5f9; padding: 15px; border-radius: 12px; margin-top: 10px; text-align: left; border: 1px solid #cbd5e1; }
+        .btn-disabled { background: #94a3b8 !important; cursor: not-allowed !important; opacity: 0.7; }
+        
+        .card { background: var(--card-bg); padding: 30px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); text-align: center; width: 100%; position: relative; }
+        .saiba-mais-btn { background: none; border: none; color: var(--azul-br); font-weight: 600; font-size: 0.8rem; cursor: pointer; margin: 8px 0 15px 0; text-decoration: underline; opacity: 0.8; }
+        .explainer { background: #eff6ff; border-left: 4px solid var(--azul-br); padding: 15px; text-align: left; font-size: 0.9rem; border-radius: 8px; margin-bottom: 20px; display: none; color: #334155; }
+        #desc { font-size: 1.1rem; color: #475569; margin: 10px 0 30px 0; line-height: 1.6; font-weight: 500; }
+        .controls { display: flex; gap: 15px; }
+        button.action { flex: 1; padding: 16px; border: none; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; color: white; transition: transform 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-no { background: var(--danger); } .btn-yes { background: var(--verde-br); }
+        
+        /* Relatório */
+        #report { display: none; width: 95%; max-width: 1000px; background: #fff; padding: 40px; border-radius: 24px; margin: 20px auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .result-card { background: #f8fafc; border-radius: 20px; overflow: hidden; border: 2px solid #e2e8f0; margin-bottom: 30px; }
+        .result-header { padding: 20px; text-align: center; color: white; font-size: 1.8rem; font-weight: 800; text-transform: uppercase; }
+        .governo-name { display: block; font-size: 0.9rem; font-weight: 400; opacity: 0.9; margin-top: 5px; }
+        .result-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 25px; }
+        @media (max-width: 600px) { .result-body { grid-template-columns: 1fr; } }
+        .result-col h4 { margin-top: 0; color: #64748b; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+        .fs-val { font-size: 1.2rem; font-weight: 800; color: #1e293b; margin-top: 5px; }
+        .grid-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .chart-box { background: #fff; padding: 15px; border-radius: 16px; border: 1px solid #e2e8f0; height: 280px; }
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 0.9rem; }
+        .history-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        
+        #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); z-index: 2000; width: 300px; text-align: center; }
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1500; backdrop-filter: blur(3px); }
+    </style>
+</head>
+<body>
+
+<div id="overlay" onclick="closeModal()"></div>
+<div id="modal">
+    <h3 id="modal-title" style="color: var(--azul-br); margin-top:0;">Info</h3>
+    <p id="modal-desc" style="color: #64748b; line-height: 1.5;"></p>
+    <button onclick="closeModal()" style="margin-top: 15px; padding: 10px 25px; border: none; background: var(--azul-br); color: white; border-radius: 8px; cursor: pointer;">Entendi</button>
+</div>
+
+<div id="dashboard">
+    <div id="box-divida" class="stat"><div class="stat-header">📉 Dívida <span class="info-btn" onclick="showModalInfo('divida')">?</span></div><span id="divida" class="val">75%</span></div>
+    <div id="box-dolar" class="stat"><div class="stat-header">💵 Dólar <span class="info-btn" onclick="showModalInfo('dolar')">?</span></div><span id="dolar" class="val">5.10</span></div>
+    <div id="box-poder" class="stat"><div class="stat-header">🛒 Poder <span class="info-btn" onclick="showModalInfo('poder')">?</span></div><span id="poder" class="val">100</span></div>
+    <div id="box-pop" class="stat"><div class="stat-header">📊 Pop. <span class="info-btn" onclick="showModalInfo('pop')">?</span></div><span id="pop" class="val">50%</span></div>
+</div>
+
+<div id="game-container">
+    <div id="intro-screen" class="intro-box">
+        <div style="font-size: 3.5rem; margin-bottom: 10px;">🇧🇷</div>
+        <h2>Gabinete de Crise</h2>
+        <p>"Bem-vindo ao Gabinete, Ministro. O Brasil é um país de recursos limitados e demandas infinitas. Cada decisão sua será um cabo de guerra entre o bem-estar imediato do povo e a confiança dos mercados."</p>
+        <input type="text" id="player-name" class="name-input" placeholder="Digite o nome do seu Governo (Ex: Silva)">
+        <div class="consent-wrapper">
+            <label style="display: flex; gap: 10px; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="consent-check" onchange="toggleStartButton()">
+                <span>Concordo em salvar meus resultados no ranking global.</span>
+            </label>
+        </div>
+        <button id="btn-start" class="action btn-yes btn-disabled" style="width: 100%; margin-top: 20px;" onclick="startGame()" disabled>ASSUMIR O CARGO</button>
+    </div>
+
+    <div id="play-area" style="display: none;">
+        <div style="color: #64748b; font-weight: 600; margin-bottom: 15px;" id="progress">RODADA 1/20</div>
+        <div class="card">
+            <h2 id="title">...</h2>
+            <button class="saiba-mais-btn" onclick="toggleExplainer()">ℹ️ Entenda o Contexto</button>
+            <div id="explainer-box" class="explainer"></div>
+            <p id="desc" style="font-size: 1.1rem; color: #475569; margin: 20px 0; line-height: 1.6;">...</p>
+            <div class="controls">
+                <button class="action btn-no" onclick="handleDecision(false)">RECUSAR ❌</button>
+                <button class="action btn-yes" onclick="handleDecision(true)">ACEITAR ✅</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="report">
+    <div class="result-card">
+        <div class="result-header" id="result-header">
+            <span id="titulo-governo"></span><br>
+            <span class="governo-name" id="nome-governo-final"></span>
+        </div>
+        <div class="result-body">
+            <div class="result-col"><h4>A Realidade</h4><p id="result-realidade" class="result-text">...</p></div>
+            <div class="result-col"><h4>Veredito Final</h4><p id="result-veredito" class="result-text" style="font-weight:bold;">...</p></div>
+        </div>
+    </div>
+
+    <div class="final-stats-row" style="display: flex; justify-content: space-around; margin-bottom: 30px; flex-wrap: wrap; gap:10px;">
+        <div style="text-align:center;"><div>Pop.</div><div class="fs-val" id="fs-pop">--</div></div>
+        <div style="text-align:center;"><div>Dívida</div><div class="fs-val" id="fs-divida">--</div></div>
+        <div style="text-align:center;"><div>Dólar</div><div class="fs-val" id="fs-dolar">--</div></div>
+        <div style="text-align:center;"><div>Poder</div><div class="fs-val" id="fs-poder">--</div></div>
+    </div>
+
+    <div class="grid-charts">
+        <div class="chart-box"><h4>Popularidade</h4><canvas id="chartPop"></canvas></div>
+        <div class="chart-box"><h4>Dívida</h4><canvas id="chartDiv"></canvas></div>
+        <div class="chart-box"><h4>Dólar</h4><canvas id="chartDol"></canvas></div>
+        <div class="chart-box"><h4>Poder</h4><canvas id="chartPod"></canvas></div>
+    </div>
+
+    <h3 style="margin-top: 50px;">Histórico Detalhado</h3>
+    <table class="history-table">
+        <thead><tr><th>Dilema</th><th>Decisão</th><th>Contexto</th></tr></thead>
+        <tbody id="history-body"></tbody>
+    </table>
+    <button class="action btn-yes" style="width:100%; margin-top:20px;" onclick="location.reload()">NOVO MANDATO</button>
+</div>
+
+<script>
+    // --- TEXTOS RICOS (Info dos Indicadores) ---
+    const infoDocs = {
+        divida: { t: "Dívida Pública", d: "Relação Dívida/PIB. Acima de 90% gera pânico e fuga de capital." },
+        dolar: { t: "Cotação do Dólar", d: "Afeta diretamente o preço de combustíveis, pão e eletrônicos." },
+        poder: { t: "Poder de Compra", d: "A riqueza real. Cai quando o Dólar sobe e a inflação aumenta." },
+        pop: { t: "Popularidade", d: "Seu capital político. Abaixo de 20%, o risco de queda é iminente." }
+    };
+
+    // --- PAUTAS COMPLETAS (20 Rodadas) ---
+    const pautas = [
+        { t: "Piso da Enfermagem", d: "O Congresso aprovou o piso salarial nacional de R$ 4.750. A medida corrige uma injustiça histórica, mas prefeitos e hospitais privados alegam que não têm caixa para pagar e ameaçam demissões.", info: "Sanção valoriza a classe, mas gera custo fiscal imediato e possível desemprego no setor.", s: {divida:2, pop:12}, r: {pop:-18} },
+        { t: "Taxação de E-commerce", d: "A Receita Federal propõe taxar em 60% compras internacionais (Shein/Shopee) abaixo de US$ 50 para proteger o varejo nacional da 'concorrência desleal'.", info: "A medida agrada empresários brasileiros, mas retira o poder de compra da população de baixa renda.", s: {divida:-3, pop:-25, poder:-5}, r: {pop:10, divida:1} },
+        { t: "Privatização da Petrobras", d: "Vender o controle acionário da Petrobras para reduzir a dívida pública em 15% de uma só vez. O mercado promete chuva de dólares, mas perderemos o controle de preços.", info: "Venda gera caixa e baixa o dólar agora, mas expõe o país totalmente à volatilidade internacional do petróleo.", s: {divida:-15, dolar:-0.8, pop:-20}, r: {divida:2, pop:5} },
+        { t: "Programa Gás para Todos", d: "A oposição pressiona por um subsídio de 100% no botijão de gás para famílias do Cadastro Único. O custo é de R$ 12 bilhões ao ano.", info: "Fundamental para combater a fome, mas é um gasto permanente que pressiona o teto de gastos.", s: {divida:5, pop:18}, r: {pop:-15} },
+        { t: "Fim do Teto de Gastos", d: "Sua base aliada quer derrubar a regra que limita os gastos à inflação, permitindo investir em obras paradas. O mercado financeiro vê isso como 'cheque em branco'.", info: "Permite crescimento via obras públicas, mas gera desconfiança fiscal e alta dos juros.", s: {divida:8, pop:10, dolar:0.4}, r: {divida:-2, dolar:-0.2, pop:-8} },
+        { t: "Subsídio ao Agronegócio", d: "O Plano Safra exige R$ 20 bilhões em juros subsidiados para produtores de soja. Sem isso, a safra pode quebrar e a comida encarecer.", info: "Garante a produção e exportação (dólar cai), mas favorece o setor mais rico da economia com dinheiro público.", s: {dolar:-0.3, pop:5, divida:4}, r: {dolar:0.2, pop:-5, poder:-2} },
+        { t: "Legalização dos Cassinos", d: "O projeto libera resorts integrados com jogos de azar. A estimativa é arrecadar R$ 20 bilhões em impostos, mas a bancada evangélica promete travar o governo.", info: "Dinheiro novo sem aumentar impostos, mas custo político altíssimo com conservadores.", s: {divida:-5, pop:-10}, r: {divida:1, pop:5} },
+        { t: "Reforma Administrativa", d: "Proposta para acabar com a estabilidade de novos servidores públicos e reduzir salários de entrada. O mercado adora, mas o funcionalismo ameaça greve geral.", info: "Reduz o gasto com folha a longo prazo, mas paralisa serviços públicos hoje devido às greves.", s: {divida:-4, dolar:-0.2, pop:-20}, r: {divida:3, pop:5} },
+        { t: "Aumento Real do Mínimo", d: "Centrais sindicais exigem aumento de 6% acima da inflação para o salário mínimo. Isso injeta dinheiro na economia, mas explode as contas da Previdência.", info: "Aumenta o consumo e popularidade, mas metade do gasto federal é indexado ao mínimo.", s: {divida:7, pop:25}, r: {divida:-2, pop:-20, poder:-5} },
+        { t: "Trem Bala Rio-SP", d: "Investidores chineses querem financiar o trem de alta velocidade, mas exigem garantias do Tesouro Nacional de R$ 60 bilhões.", info: "Modernização logística necessária, mas risco de virar uma dívida impagável se a demanda for baixa.", s: {divida:10, pop:15, dolar:0.2}, r: {divida:-1, pop:-5} },
+        { t: "Retaxação dos Combustíveis", d: "A isenção de impostos na gasolina acabou. Voltar a cobrar impostos melhora o caixa em R$ 30 bi, mas a gasolina vai subir R$ 0,70 na bomba amanhã.", info: "Responsabilidade fiscal pura, mas impopularidade imediata e inflação na veia.", s: {divida:-8, pop:-25, poder:-5}, r: {divida:5, pop:10} },
+        { t: "Exploração na Foz do Amazonas", d: "A Petrobras quer perfurar poços na Margem Equatorial. Pode render trilhões, mas o IBAMA alerta para riscos ambientais irreversíveis.", info: "Potencial de transformar a economia, mas gera crise diplomática ambiental e protestos.", s: {divida:-5, dolar:-0.3, pop:-10}, r: {pop:10, dolar:0.1} },
+        { t: "Imposto sobre Grandes Fortunas", d: "Criar uma alíquota de 2% para patrimônios acima de R$ 50 milhões. A medida agrada a base, mas pode provocar fuga de capital para o exterior.", info: "Justiça fiscal teórica, mas risco prático de desinvestimento no país.", s: {pop:15, dolar:0.5, divida:-2}, r: {pop:-10, dolar:-0.1} },
+        { t: "Anistia a Multas Ambientais", d: "A bancada ruralista exige o perdão de multas do IBAMA em troca de apoio no Congresso. O valor perdoado seria de R$ 8 bilhões.", info: "Garante governabilidade, mas destrói a imagem do Brasil lá fora (boicote a produtos).", s: {pop:5, dolar:0.4, divida:1}, r: {pop:-5, dolar:-0.1} },
+        { t: "Universidade Gratuita para Todos?", d: "Projeto propõe cobrar mensalidade em federais de quem ganha acima de 30 salários mínimos. Gera receita, mas quebra o princípio da gratuidade universal.", info: "Foca o gasto público em quem precisa, mas gera revolta estudantil.", s: {divida:-3, pop:-15}, r: {divida:1, pop:5} },
+        { t: "Intervenção no Banco Central", d: "Os juros estão altos demais. Sua base quer mudar a lei para demitir o presidente do BC e forçar a queda da taxa SELIC na marra.", info: "Baixa o custo do crédito artificialmente, mas destrói a credibilidade da moeda (Dólar dispara).", s: {pop:10, dolar:1.5, poder:-10}, r: {dolar:-0.2, pop:-5} },
+        { t: "Isenção de IRPF até R$ 5 mil", d: "Promessa de campanha: quem ganha até 5 mil não paga imposto. O rombo estimado é de R$ 100 bilhões anuais nas contas públicas.", info: "Aumenta o salário líquido da classe média, mas exige corte brutal em saúde e educação para compensar.", s: {pop:30, divida:15, poder:5}, r: {pop:-20, divida:-5} },
+        { t: "Compra de Caças Militares", d: "A Força Aérea pede R$ 15 bilhões para renovar a frota de caças. É uma questão de soberania nacional, mas não há guerra à vista.", info: "Fortalece a defesa, mas retira verba de áreas sociais urgentes.", s: {divida:4, pop:-5}, r: {divida:-1, pop:0} },
+        { t: "Regulação das Redes Sociais", d: "Criar uma agência para multar plataformas que não removerem fake news rapidamente. As Big Techs ameaçam sair do país.", info: "Combate a desinformação, mas gera acusações de censura e perda de investimentos tecnológicos.", s: {pop:-10, dolar:0.1}, r: {pop:5} },
+        { t: "Moeda Comum com Argentina", d: "Criar uma moeda única para comércio no Mercosul. A ideia é reduzir dependência do dólar, mas a economia vizinha está quebrada.", info: "Fortalece o bloco político, mas contamina o Real com a inflação vizinha.", s: {dolar:0.8, pop:-10, poder:-5}, r: {dolar:-0.1, pop:5} }
+    ];
+
+    let currentRound = 0, playerName = "", stats = { divida: 75, dolar: 5.10, poder: 100, pop: 50 };
+    let history = { divida: [75], dolar: [5.10], poder: [100], pop: [50] };
+    let currentGameLogs = []; 
+
+    function toggleStartButton() {
+        const check = document.getElementById('consent-check');
+        const btn = document.getElementById('btn-start');
+        btn.disabled = !check.checked;
+        btn.classList.toggle('btn-disabled', !check.checked);
+    }
+
+    function startGame() {
+        playerName = document.getElementById('player-name').value.trim() || "Ministro(a)";
+        document.getElementById('intro-screen').style.display = 'none';
+        document.getElementById('play-area').style.display = 'block';
+        updateUI();
+    }
+
+    function showModalInfo(key) {
+        document.getElementById('modal-title').innerText = infoDocs[key].t;
+        document.getElementById('modal-desc').innerText = infoDocs[key].d;
+        document.getElementById('modal').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; }
+    function toggleExplainer() {
+        const box = document.getElementById('explainer-box');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function handleDecision(accepted) {
+        const p = pautas[currentRound];
+        const effects = accepted ? p.s : (p.r || {});
+        currentGameLogs.push({ rodada: currentRound + 1, pauta: p.t, decisao: accepted ? "ACEITOU" : "RECUSOU", contexto: p.info });
+
+        for (let key in effects) if(stats[key] !== undefined) stats[key] += effects[key];
+        
+        // Física Econômica
+        if (stats.divida > 85) stats.dolar += 0.10;
+        if (stats.divida > 95) stats.dolar += 0.20;
+        stats.poder = Math.max(0, 100 - ((stats.dolar - 5.10) * 15));
+
+        for (let key in stats) {
+            const box = document.getElementById('box-'+key);
+            const diff = stats[key] - history[key][history[key].length-1];
+            if (diff !== 0) {
+                const bad = (key === 'divida' || key === 'dolar') ? diff > 0 : diff < 0;
+                box.classList.add(bad ? 'up-bad' : 'up-good');
+                setTimeout(() => box.classList.remove('up-good', 'up-bad'), 600);
+            }
+            history[key].push(stats[key]);
+        }
+        
+        currentRound++;
+        if (currentRound < pautas.length) updateUI();
+        else showReport();
+    }
+
+    function updateUI() {
+        document.getElementById('divida').innerText = stats.divida.toFixed(0) + "%";
+        document.getElementById('dolar').innerText = stats.dolar.toFixed(2);
+        document.getElementById('poder').innerText = stats.poder.toFixed(0);
+        document.getElementById('pop').innerText = stats.pop.toFixed(0) + "%";
+        document.getElementById('progress').innerText = `RODADA ${currentRound + 1}/${pautas.length}`;
+        document.getElementById('title').innerText = pautas[currentRound].t;
+        document.getElementById('desc').innerText = pautas[currentRound].d;
+        document.getElementById('explainer-box').innerText = pautas[currentRound].info;
+        document.getElementById('explainer-box').style.display = 'none';
+    }
+
+    // --- CONEXÃO COM NEON VIA NETLIFY FUNCTION ---
+    async function enviarParaNeon(titulo, veredito) {
+        const dados = {
+            nome: playerName,
+            perfil: titulo,
+            veredito: veredito,
+            divida: stats.divida,
+            dolar: stats.dolar,
+            poder: stats.poder,
+            pop: stats.pop
+        };
+
+        try {
+            await fetch('/.netlify/functions/salvar_partida', {
+                method: 'POST',
+                body: JSON.stringify(dados)
+            });
+            console.log("Dados enviados para o banco Neon!");
+        } catch (e) {
+            console.error("Erro ao salvar:", e);
+        }
+    }
+
+    function showReport() {
+        document.getElementById('play-area').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'none';
+        document.getElementById('report').style.display = 'block';
+
+        let t="", c="", r="", v="";
+        if (stats.dolar > 6.00 || stats.poder < 60) {
+            t="🔥 O Colapso Total"; c="#b91c1c";
+            r="Hiperinflação e destruição da moeda. O povo não consegue comer.";
+            v="Você perdeu o controle da economia. O país virou uma Venezuela. Saques a supermercados e caos social.";
+        } else if (stats.pop < 20) {
+            t="📉 O Breve (Impeachment)"; c="#7f1d1d";
+            r="O Congresso não perdoa fraqueza. Você perdeu a governabilidade.";
+            v="Seu governo caiu antes do fim. Processo de impeachment aprovado.";
+        } else if (stats.pop > 60 && stats.divida > 85) {
+            t="💸 O Populista Irresponsável"; c="#ea580c";
+            r="Festa do gasto público. Inflação futura contratada.";
+            v="Você sai nos braços do povo, mas deixa uma herança maldita. O próximo presidente terá que fazer um ajuste brutal.";
+        } else if (stats.divida < 65 && stats.pop < 40) {
+            t="🔪 O Tecnocrata Frio"; c="#1d4ed8";
+            r="Contas em dia, mas o povo sofre sem serviços e benefícios.";
+            v="O mercado te ama, o povo te odeia. Zero chance de reeleição.";
+        } else if (stats.pop > 60 && stats.divida < 75 && stats.poder > 80) {
+            t="🏆 O Estadista Lendário"; c="#15803d";
+            r="Crescimento com responsabilidade. O cenário dos sonhos.";
+            v="Você entra para a história. Conseguiu agradar gregos e troianos. Reeleição garantida no 1º turno.";
+        } else {
+            t="⚖️ O Equilibrista"; c="#475569";
+            r="O famoso 'feijão com arroz'. Não quebrou, mas não decolou.";
+            v="Um governo de transição. Você sobreviveu aos 40 meses sem grandes escândalos, mas sem grandes legados.";
+        }
+
+        const header = document.getElementById('result-header');
+        header.style.backgroundColor = c;
+        document.getElementById('titulo-governo').innerText = t;
+        document.getElementById('nome-governo-final').innerText = "Governo " + playerName;
+        document.getElementById('result-realidade').innerText = r;
+        document.getElementById('result-veredito').innerText = v;
+
+        document.getElementById('fs-pop').innerText = stats.pop.toFixed(0) + "%";
+        document.getElementById('fs-divida').innerText = stats.divida.toFixed(0) + "%";
+        document.getElementById('fs-dolar').innerText = "R$ " + stats.dolar.toFixed(2);
+        document.getElementById('fs-poder').innerText = stats.poder.toFixed(0);
+
+        document.getElementById('history-body').innerHTML = currentGameLogs.map(l => 
+            `<tr><td><strong>${l.pauta}</strong></td>
+            <td><span style="color:${l.decisao==='ACEITOU'?'green':'red'}; font-weight:bold;">${l.decisao}</span></td>
+            <td style="color:#64748b; font-size:0.85rem;">${l.contexto}</td></tr>`
+        ).join('');
+
+        new Chart(document.getElementById('chartPop'), {type:'line', data:{labels:history.pop.map((_,i)=>i), datasets:[{data:history.pop, borderColor:'#16a34a', fill:true}]}, options:{plugins:{legend:{display:false}}, elements:{point:{radius:0}}}});
+        new Chart(document.getElementById('chartDiv'), {type:'line', data:{labels:history.divida.map((_,i)=>i), datasets:[{data:history.divida, borderColor:'#dc2626', fill:true}]}, options:{plugins:{legend:{display:false}}, elements:{point:{radius:0}}}});
+        new Chart(document.getElementById('chartDol'), {type:'line', data:{labels:history.dolar.map((_,i)=>i), datasets:[{data:history.dolar, borderColor:'#2563eb', fill:true}]}, options:{plugins:{legend:{display:false}}, elements:{point:{radius:0}}}});
+        new Chart(document.getElementById('chartPod'), {type:'line', data:{labels:history.poder.map((_,i)=>i), datasets:[{data:history.poder, borderColor:'#059669', fill:true}]}, options:{plugins:{legend:{display:false}}, elements:{point:{radius:0}}}});
+
+        // Envia para o Neon
+        enviarParaNeon(t, v);
+    }
+</script>
+</body>
+</html>
